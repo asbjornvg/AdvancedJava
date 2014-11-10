@@ -16,10 +16,11 @@ public interface Map<T> {
 	public void map(Mutation<T> m, List<T> l);
 
 }
-	class MapSequential implements Map<Employee>{
+	class MapSequential implements Map<Employee> {
 
 		@Override
 		public void map(Mutation<Employee> m, List<Employee> l) {
+			// Traverse the list sequentially.
 			for (Employee employee : l) {
 				m.mutate(employee);
 			}
@@ -29,28 +30,36 @@ public interface Map<T> {
 	
 	class MutationThread extends IncreaseSalary implements Runnable {
 		
-		Employee emp;
+		private Mutation<Employee> m;
+		private Employee emp;
 		
-		public MutationThread(Employee emp){
+		public MutationThread(Mutation<Employee> m, Employee emp){
+			this.m = m;
 			this.emp = emp;
 		}
 
 		@Override
 		public void run() {
-			this.mutate(this.emp);
+			// Mutate the employee.
+			this.m.mutate(this.emp);
 		}
 		
 	}
 	
-	class MapParallel implements Map<Employee>{
+	class MapParallel implements Map<Employee> {
 		@Override
 		public void map(Mutation<Employee> m, List<Employee> l) {
-			List<Thread> threads = new ArrayList<Thread>(); 
+			// Keep a list of threads.
+			List<Thread> threads = new ArrayList<Thread>();
+			
+			// For each employee in the list, start a new mutation thread.
 			for (Employee employee : l) {
-				Thread mt = new Thread(new MutationThread(employee));
+				Thread mt = new Thread(new MutationThread(m, employee));
 				mt.start();
 				threads.add(mt);
 			}
+			
+			// Wait for all the threads to finish.
 			for (Thread thread : threads) {
 				try {
 					thread.join();
@@ -61,18 +70,22 @@ public interface Map<T> {
 		}
 	}
 	
-	class MapChunked implements Map<Employee>{
+	class MapChunked implements Map<Employee> {
 		
 		MapParallel mp = new MapParallel();
 
 		@Override
 		public void map(Mutation<Employee> m, List<Employee> l) {
 			if(l.size() <= 3){
+				// Three or less elements in the list, just map
+				// them in parallel.
 				mp.map(m,l);
 			}
 			else{
+				// Otherwise, map the first three in parallel (which
+				// includes waiting for them to finish)
 				mp.map(m, l.subList(0, 3));
-				// Recursive call
+				// And then call recursively on the rest of the list.
 				this.map(m, l.subList(3, l.size()));
 			}
 			

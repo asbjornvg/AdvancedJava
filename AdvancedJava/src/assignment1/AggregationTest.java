@@ -36,7 +36,13 @@ public class AggregationTest {
 	@Test
 	public void testAggregationSequential(){
 		AggregationSequential a = new AggregationSequential();
-		testAggregation(a);
+		this.testAggregation(a);
+	}
+	
+	@Test
+	public void testAggregationParallel(){
+		AggregationParallel a = new AggregationParallel();
+		this.testAggregation(a);
 	}
 
 }

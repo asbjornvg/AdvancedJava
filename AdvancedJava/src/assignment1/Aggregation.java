@@ -18,7 +18,7 @@ public interface Aggregation<T> {
 
 }
 
-class AggregationSequential implements Aggregation<Employee>{
+class AggregationSequential implements Aggregation<Employee> {
 
 	@Override
 	public int aggregate(Combination<Employee> c, List<Employee> l) {
@@ -31,38 +31,75 @@ class AggregationSequential implements Aggregation<Employee>{
 	
 }
 
-class AggregationParallel implements Aggregation<Employee>{
-
+class AggregationParallel implements Aggregation<Employee> {
+	
 	@Override
 	public int aggregate(Combination<Employee> c, List<Employee> l) {
-		if(l.size() == 1){
-			// return the only element in the list
-			return l.get(0).getSalary();
+		// Start a thread that will compute the result.
+		AggregationThread a = new AggregationThread(c, l);
+		Thread t1 = new Thread(a);
+		t1.start();
+		try {
+			// Wait for the thread to finish.
+			t1.join();
+		} catch (InterruptedException e) {
+			// Do whatever, should not happen.
+			e.printStackTrace();
 		}
-		else{
-			List<Employee> l1 = l.subList(0, l.size()/2);
-			List<Employee> l2 = l.subList(l.size()/2, l.size());
-			int sumLeft = this.aggregate(c, l1);
-			int sumRight = this.aggregate(c, l2);
-			Thread t = new Thread(new CombineThread(sumLeft, sumRight));
-		}
-		
+		// Return what the thread computed.
+		return a.getResult();
 		
 	}
 	
-	class CombineThread extends AddSalary implements Runnable {
+	private class AggregationThread implements Runnable {
 		
-		int x;
-		int y;
+		private Combination<Employee> c;
+		private List<Employee> l;
+		private int result;
 		
-		public CombineThread(int x, int y){
-			this.x = x;
-			this.y = y;
+		public AggregationThread(Combination<Employee> c, List<Employee> l){
+			this.c = c;
+			this.l = l;
+		}
+		
+		public int getResult() {
+			return this.result;
 		}
 
 		@Override
 		public void run() {
-			this.combine(this.x, this.y);
+			if(this.l.size() == 1) {
+				// Return the salary of the only Employee in the list.
+				this.result = l.get(0).getSalary();
+				return;
+			}
+			else {
+				// Split into two sublists.
+				List<Employee> l1 = this.l.subList(0, this.l.size()/2);
+				List<Employee> l2 = this.l.subList(this.l.size()/2, this.l.size());
+				// Call recursively on both sublists (start one thread
+				// for each sublist).
+				AggregationThread a1 = new AggregationThread(this.c, l1);
+				AggregationThread a2 = new AggregationThread(this.c, l2);
+				Thread t1 = new Thread(a1);
+				Thread t2 = new Thread(a2);
+				t1.start();
+				t2.start();
+				try {
+					// Wait for the threads to finish.
+					t1.join();
+					t2.join();
+				} catch (InterruptedException e) {
+					// Do whatever, should not happen.
+					e.printStackTrace();
+				}
+				// Now, the two sub-results are available.
+				int sumLeft = a1.getResult();
+				int sumRight = a2.getResult();
+				// Combine them.
+				this.result = this.c.combine(sumLeft, sumRight);
+				return;
+			}
 		}
 		
 	}
