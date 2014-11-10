@@ -50,7 +50,7 @@ class AggregationParallel implements Aggregation<Employee> {
 		return a.getResult();
 		
 	}
-	
+	 
 	private class AggregationThread implements Runnable {
 		
 		private Combination<Employee> c;
