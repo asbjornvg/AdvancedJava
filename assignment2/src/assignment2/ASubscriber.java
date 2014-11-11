@@ -1,7 +1,5 @@
 package assignment2;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -19,6 +17,7 @@ public class ASubscriber implements Subscriber, Runnable {
 	}
 	
 	public void run() {
+		System.out.println("ASubscriber: Thread " + Thread.currentThread().getId() + " started.");
 		while (true) {
 			int discomfortLevel = this.getDiscomfortWarning();
 			this.processDiscomfortWarning(discomfortLevel);
@@ -26,7 +25,8 @@ public class ASubscriber implements Subscriber, Runnable {
 	}
 
 	@Override
-	public void pushDiscomfortWarning(int discomfortlevel) {
+	public synchronized void pushDiscomfortWarning(int discomfortlevel) {
+		System.out.println("ASubscriber: Thread " + Thread.currentThread().getId() + " invoked pushDiscomfortWarning on ASubscriber "+ this + ".");
 		this.pendingNotifications.add(discomfortlevel);
 		this.notificationsEmpty.signal();
 	}
