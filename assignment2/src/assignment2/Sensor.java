@@ -13,5 +13,5 @@ public interface Sensor {
 	 * Registers the list of monitors that should receive sensor data
 	 * @param sm
 	 */
-	public void registerMonitor(List<Monitor> sm);
+	public void registerMonitor(List<Monitor> sm); 
 }
