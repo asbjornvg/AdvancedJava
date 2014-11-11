@@ -1,18 +1,13 @@
 package assignment2;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class ASensor implements Sensor, Runnable {
 	
 	//A sensor can push readings to one or many monitors
-	private ThreadLocal<List<Monitor>> monitors = new ThreadLocal<List<Monitor>>();
-	
-	public ASensor() {
-		List<Monitor> ms = new ArrayList<Monitor>();
-		this.monitors.set(ms);
-	}
+	private ConcurrentLinkedQueue<Monitor> monitors = new ConcurrentLinkedQueue<Monitor>();
 	
 	public SensorReading generateSensorReading() {
 		SensorReading sr = new SensorReading();
@@ -28,8 +23,7 @@ public class ASensor implements Sensor, Runnable {
 		SensorReading reading = null;
 		while(true) {
 			reading = this.generateSensorReading();
-			List<Monitor> ms = this.monitors.get();
-			for (Monitor monitor : ms) {
+			for (Monitor monitor : this.monitors) {
 				monitor.pushReading(reading);
 			}
 			try {
@@ -44,11 +38,9 @@ public class ASensor implements Sensor, Runnable {
 
 	@Override
 	public void registerMonitor(List<Monitor> sm) {
-		List<Monitor> ms = this.monitors.get();
 		for (Monitor monitor : sm) {
-			ms.add(monitor);
+			this.monitors.add(monitor);
 		}
-		this.monitors.set(ms);
 	}
 
 }

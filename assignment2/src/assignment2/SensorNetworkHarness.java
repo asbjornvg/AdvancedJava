@@ -24,6 +24,7 @@ public class SensorNetworkHarness {
 			monitors.add(m);
 			exec.submit(m);
 		}
+		
 		for (int i = 0; i < 2; i++) {
 			
 		}

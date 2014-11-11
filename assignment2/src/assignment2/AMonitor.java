@@ -5,57 +5,56 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class AMonitor implements Monitor, Runnable {
 	
-	private ThreadLocal<List<SensorReading>> pendingReadings = new ThreadLocal<List<SensorReading>>();
-	private ThreadLocal<List<SensorReading>> currentReadings = new ThreadLocal<List<SensorReading>>();
-	private ThreadLocal<Hashtable<Integer, List<Subscriber>>> subscribers = new ThreadLocal<Hashtable<Integer, List<Subscriber>>>();
-	private ThreadLocal<Lock> internallock = new ThreadLocal<Lock>();
-	private ThreadLocal<Condition> readingsEmpty = new ThreadLocal<Condition>();
+	private ConcurrentLinkedQueue<SensorReading> pendingReadings = new ConcurrentLinkedQueue<SensorReading>();
+	private List<SensorReading> currentReadings = new ArrayList<SensorReading>();
+	private ConcurrentHashMap<Integer, List<Subscriber>> subscribers = new ConcurrentHashMap<Integer, List<Subscriber>>();
+	private Lock internallock;
+	private Condition readingsEmpty;
 	
 	private final int MAX_CURRENT_READINGS = 10;
 	private final int MIN_DISCOMFORT_LEVEL = 0;
 	private final int MAX_DISCOMFORT_LEVEL = 5;
 	
 	public AMonitor() {
-		this.pendingReadings.set(new ArrayList<SensorReading>());
-		this.currentReadings.set(new ArrayList<SensorReading>());
-		this.subscribers.set(new Hashtable<Integer, List<Subscriber>>());
 		for (int i = this.MIN_DISCOMFORT_LEVEL; i < this.MAX_DISCOMFORT_LEVEL + 1; i++) {
-			this.subscribers.get().put(i, new ArrayList<Subscriber>());
+			this.subscribers.put(i, new ArrayList<Subscriber>());
 		}
-		this.internallock.set(new ReentrantLock());
-		this.readingsEmpty.set(this.internallock.get().newCondition());
+		this.internallock = new ReentrantLock();
+		this.readingsEmpty = this.internallock.newCondition();
 	}
 	
 	@Override
 	public void pushReading(SensorReading sensorInput) {
-		this.pendingReadings.get().add(sensorInput);
-		this.readingsEmpty.get().signal();
+		this.pendingReadings.add(sensorInput);
+		this.readingsEmpty.signal();
 	}
 
 	@Override
 	public void processReading(SensorReading sensorInput) {
-		this.currentReadings.get().add(sensorInput);
-		if (this.currentReadings.get().size() > this.MAX_CURRENT_READINGS) {
-			this.currentReadings.get().remove(0);
+		this.currentReadings.add(sensorInput);
+		if (this.currentReadings.size() > this.MAX_CURRENT_READINGS) {
+			this.currentReadings.remove(0);
 		}
 		float h_average = 0.0f;
 		float t_average = 0.0f;
-		for (SensorReading sr : this.currentReadings.get()) {
+		for (SensorReading sr : this.currentReadings) {
 			h_average += sr.getHumidity();
 			t_average += sr.getTemperature();
 		}
-		h_average /= this.currentReadings.get().size();
-		t_average /= this.currentReadings.get().size();
+		h_average /= this.currentReadings.size();
+		t_average /= this.currentReadings.size();
 		int discomfortLevel = this.GetDiscomfortLevel(h_average, t_average);
 		
 		// Iterate over the hashtable.
-		Iterator<Entry<Integer, List<Subscriber>>> it = this.subscribers.get().entrySet().iterator();
+		Iterator<Entry<Integer, List<Subscriber>>> it = this.subscribers.entrySet().iterator();
 		while(it.hasNext()) {
 			Entry<Integer, List<Subscriber>> entry = it.next();
 			if (entry.getKey() >= discomfortLevel) {
@@ -69,26 +68,25 @@ public class AMonitor implements Monitor, Runnable {
 
 	@Override
 	public void registerSubscriber(int discomfortLevel, Subscriber subscriber) {
-		if (!this.subscribers.get().get(discomfortLevel).contains(subscriber)) {
-			this.subscribers.get().get(discomfortLevel).add(subscriber);
+		if (!this.subscribers.get(discomfortLevel).contains(subscriber)) {
+			this.subscribers.get(discomfortLevel).add(subscriber);
 		}
 	}
 
 	@Override
 	public SensorReading getSensorReading() {
 		try {
-			this.internallock.get().lock();
-			while (this.pendingReadings.get().isEmpty()) {
-				this.readingsEmpty.get().await();
+			this.internallock.lock();
+			while (this.pendingReadings.isEmpty()) {
+				this.readingsEmpty.await();
 			}
-			SensorReading result = this.pendingReadings.get().get(0);
-			this.pendingReadings.get().remove(0);
+			SensorReading result = this.pendingReadings.poll();
 			return result;
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 			return null;
 		} finally {
-			this.internallock.get().unlock();
+			this.internallock.unlock();
 		}
 	}
 

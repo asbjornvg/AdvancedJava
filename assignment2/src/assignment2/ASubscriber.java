@@ -2,20 +2,20 @@ package assignment2;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ASubscriber implements Subscriber, Runnable {
 	
-	private ThreadLocal<List<Integer>> pendingNotifications = new ThreadLocal<List<Integer>>();
-	private ThreadLocal<Lock> internallock = new ThreadLocal<Lock>();
-	private ThreadLocal<Condition> notificationsEmpty = new ThreadLocal<Condition>();
+	private ConcurrentLinkedQueue<Integer> pendingNotifications = new ConcurrentLinkedQueue<Integer>();
+	private Lock internallock;
+	private Condition notificationsEmpty;
 	
 	public ASubscriber() {
-		this.pendingNotifications.set(new ArrayList<Integer>());
-		this.internallock.set(new ReentrantLock());
-		this.notificationsEmpty.set(this.internallock.get().newCondition());
+		this.internallock = new ReentrantLock();
+		this.notificationsEmpty = this.internallock.newCondition();
 	}
 	
 	public void run() {
@@ -27,8 +27,8 @@ public class ASubscriber implements Subscriber, Runnable {
 
 	@Override
 	public void pushDiscomfortWarning(int discomfortlevel) {
-		this.pendingNotifications.get().add(discomfortlevel);
-		this.notificationsEmpty.get().signal();
+		this.pendingNotifications.add(discomfortlevel);
+		this.notificationsEmpty.signal();
 	}
 
 	@Override
@@ -39,18 +39,17 @@ public class ASubscriber implements Subscriber, Runnable {
 	@Override
 	public int getDiscomfortWarning() {
 		try {
-			this.internallock.get().lock();
-			while (this.pendingNotifications.get().isEmpty()) {
-				this.notificationsEmpty.get().await();
+			this.internallock.lock();
+			while (this.pendingNotifications.isEmpty()) {
+				this.notificationsEmpty.await();
 			}
-			int result = this.pendingNotifications.get().get(0);
-			this.pendingNotifications.get().remove(0);
+			int result = this.pendingNotifications.poll();
 			return result;
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 			return 0;
 		} finally {
-			this.internallock.get().unlock();
+			this.internallock.unlock();
 		}
 	}
 }
