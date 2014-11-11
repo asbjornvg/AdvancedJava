@@ -25,15 +25,19 @@ public class ASubscriber implements Subscriber, Runnable {
 	}
 
 	@Override
-	public synchronized void pushDiscomfortWarning(int discomfortlevel) {
-		System.out.println("ASubscriber: Thread " + Thread.currentThread().getId() + " invoked pushDiscomfortWarning on ASubscriber "+ this + ".");
-		this.pendingNotifications.add(discomfortlevel);
-		this.notificationsEmpty.signal();
+	public void pushDiscomfortWarning(int discomfortlevel) {
+		try {
+			this.internallock.lock();
+			this.pendingNotifications.add(discomfortlevel);
+			this.notificationsEmpty.signal();
+		} finally {
+			this.internallock.unlock();
+		}
 	}
 
 	@Override
 	public void processDiscomfortWarning(int discomfortLevel) {
-		System.out.println("Subscriber running in thread " + Thread.currentThread().getId() + ": Discomfort level is " + discomfortLevel);
+		System.out.println("Subscriber running in thread " + Thread.currentThread().getId() + ": Discomfort level is " + discomfortLevel + ".");
 	}
 
 	@Override

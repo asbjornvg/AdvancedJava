@@ -42,8 +42,36 @@ public class SensorNetworkHarness {
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		exec.shutdown();
+		exec.shutdownNow();
 		System.out.println("Main thread (thread " + Thread.currentThread().getId() + ") has issued shutdown.");
 	}
+	
+	/*public static void main(String[] args) {
+		System.out.println("Main thread (thread " + Thread.currentThread().getId() + ") started.");
+		ExecutorService exec = Executors.newCachedThreadPool();
+		
+		ASensor se = new ASensor();
+		exec.submit(se);
+		
+		AMonitor m = new AMonitor();
+		exec.submit(m);
+		
+		List<Monitor> monitors = new ArrayList<Monitor>();
+		monitors.add(m);
+		se.registerMonitor(monitors);
+		
+		ASubscriber su = new ASubscriber();
+		exec.submit(su);
+		
+		m.registerSubscriber(0, su);
+		
+		try {
+			Thread.sleep(10000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		exec.shutdown();
+		System.out.println("Main thread (thread " + Thread.currentThread().getId() + ") has issued shutdown.");
+	}*/
 
 }

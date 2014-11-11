@@ -31,15 +31,18 @@ public class AMonitor implements Monitor, Runnable {
 	}
 	
 	@Override
-	public synchronized void pushReading(SensorReading sensorInput) {
-		System.out.println("AMonitor: Thread " + Thread.currentThread().getId() + " invoked pushReading on AMonitor "+ this + ".");
-		this.pendingReadings.add(sensorInput);
-		this.readingsEmpty.signal();
+	public void pushReading(SensorReading sensorInput) {
+		try {
+			this.internallock.lock();
+			this.pendingReadings.add(sensorInput);
+			this.readingsEmpty.signal();
+		} finally {
+			this.internallock.unlock();
+		}
 	}
 
 	@Override
 	public void processReading(SensorReading sensorInput) {
-		System.out.println("AMonitor: Thread " + Thread.currentThread().getId() + " going to process sensor reading.");
 		this.currentReadings.add(sensorInput);
 		if (this.currentReadings.size() > this.MAX_CURRENT_READINGS) {
 			this.currentReadings.remove(0);
@@ -54,12 +57,11 @@ public class AMonitor implements Monitor, Runnable {
 		t_average /= this.currentReadings.size();
 		int discomfortLevel = this.GetDiscomfortLevel(h_average, t_average);
 		
-		System.out.println("AMonitor: Thread " + Thread.currentThread().getId() + " going to push discomfort warnings.");
 		// Iterate over the hashtable.
 		Iterator<Entry<Integer, List<Subscriber>>> it = this.subscribers.entrySet().iterator();
 		while(it.hasNext()) {
 			Entry<Integer, List<Subscriber>> entry = it.next();
-			if (entry.getKey() >= discomfortLevel) {
+			if (entry.getKey() <= discomfortLevel) {
 				// Iterate over the list.
 				for (Subscriber s : entry.getValue()) {
 					s.pushDiscomfortWarning(discomfortLevel);
@@ -69,8 +71,7 @@ public class AMonitor implements Monitor, Runnable {
 	}
 
 	@Override
-	public synchronized void registerSubscriber(int discomfortLevel, Subscriber subscriber) {
-		System.out.println("AMonitor: Thread " + Thread.currentThread().getId() + " invoked registerSubscriber on AMonitor "+ this + ".");
+	public void registerSubscriber(int discomfortLevel, Subscriber subscriber) {
 		if (!this.subscribers.get(discomfortLevel).contains(subscriber)) {
 			this.subscribers.get(discomfortLevel).add(subscriber);
 		}
@@ -78,16 +79,11 @@ public class AMonitor implements Monitor, Runnable {
 
 	@Override
 	public SensorReading getSensorReading() {
-		System.out.println("AMonitor: Thread " + Thread.currentThread().getId() + " going to get sensor reading.");
 		try {
-			System.out.println("AMonitor: Thread " + Thread.currentThread().getId() + " locking internal lock.");
 			this.internallock.lock();
 			while (this.pendingReadings.isEmpty()) {
-				System.out.println("AMonitor: Thread " + Thread.currentThread().getId() + " going to wait (there were no pending readings).");
 				this.readingsEmpty.await();
-				System.out.println("AMonitor: Thread " + Thread.currentThread().getId() + " was signalled.");
 			}
-			System.out.println("AMonitor: Thread " + Thread.currentThread().getId() + " finished waiting (now there are pending readings).");
 			SensorReading result = this.pendingReadings.poll();
 			return result;
 		} catch (InterruptedException e) {
