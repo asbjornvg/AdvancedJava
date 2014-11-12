@@ -11,7 +11,7 @@ import java.util.Map;
  * 
  */
 public class EmployeeDBHTTPServer {
-	private static final String filePath = "/home/bonii/advanced-java/src/assignment3/departmentservermapping.xml";
+	private static final String filePath = "/home/jeppe/Git/AdvancedJava/assignment3/src/assignment3/departmentservermapping.xml";
 
 	public static void main(String[] args) throws Exception {
 

@@ -29,8 +29,16 @@ public class SimpleEmployeeDB implements EmployeeDB {
 	@Override
 	public synchronized List<Employee> listEmployeesInDept(List<Integer> departmentIds) {
 		List<Employee> result = new ArrayList<Employee>();
-		for (Integer depId : departmentIds) {
-			result.addAll(employees.get(depId));
+		
+		if(employees != null)
+			{
+			for (Integer depId : departmentIds) {
+				
+				if(employees.containsKey(depId))
+				{
+					result.addAll(employees.get(depId));
+				}
+			}
 		}
 		return result;
 	}
@@ -46,7 +54,8 @@ public class SimpleEmployeeDB implements EmployeeDB {
 			throws DepartmentNotFoundException,
 			NegativeSalaryIncrementException {
 		for (SalaryIncrement salaryIncrement : salaryIncrements) {
-			if(salaryIncrement.getIncrementBy() < 0){
+			
+			if(salaryIncrement.getIncrementBy() < 0){				
 				throw new NegativeSalaryIncrementException("Found a negative salary!");
 			}
 			if(!employees.containsKey(salaryIncrement.getDepartment())){
